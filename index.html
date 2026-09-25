@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hábitos - Monitor de Hábitos</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bgDark: '#0b0f19',
+            cardDark: '#151b28',
+            cardHover: '#1e2638',
+            turquoise: '#2dd4bf',
+            coral: '#ff6b6b',
+            purpleCustom: '#a855f7',
+            yellowCustom: '#eab308',
+            borderDark: '#232d42'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #232d42;
+      border-radius: 4px;
+    }
+    /* Estilos para columna fija (Sticky) en la matriz */
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 20;
+      background-color: #151b28;
+    }
+    th.sticky-col {
+      background-color: #151b28;
+      z-index: 30;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex justify-center bg-bgDark">
+
+  <!-- Contenedor Estilo Celular -->
+  <div class="w-full max-w-md p-4 flex flex-col gap-5 pb-12">
+    
+    <!-- Selector de Sesión de Usuario e Indicador Cloud -->
+    <div class="bg-cardDark p-3 rounded-2xl border border-borderDark flex justify-between items-center text-xs">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-turquoise animate-pulse"></span>
+        <span class="text-gray-400">Dispositivo activo:</span>
+      </div>
+      <select id="userSelector" onchange="changeActiveUser(this.value)" class="bg-bgDark text-turquoise font-semibold px-3 py-1.5 rounded-xl border border-borderDark focus:outline-none">
+        <option value="none">-- Sin Seleccionar --</option>
+        <option value="Krishna">🌸 Krishna</option>
+        <option value="Sebastián">⚡ Sebastián</option>
+      </select>
+    </div>
+
+    <!-- PANTALLA 1: PRINCIPAL / INICIO -->
+    <div id="viewHome" class="flex flex-col gap-5">
+      
+      <!-- 2 Recuadros Superiores con Nombres -->
+      <div class="grid grid-cols-2 gap-3">
+        <div onclick="enterPanel('Krishna')" class="bg-cardDark p-5 rounded-2xl border border-borderDark text-center cursor-pointer hover:bg-cardHover transition">
+          <div class="text-3xl mb-2">🌸</div>
+          <h2 class="font-bold text-lg text-white">Krishna</h2>
+          <p class="text-xs text-gray-400 mt-1">Ingresar al Panel</p>
+        </div>
+        <div onclick="enterPanel('Sebastián')" class="bg-cardDark p-5 rounded-2xl border border-borderDark text-center cursor-pointer hover:bg-cardHover transition">
+          <div class="text-3xl mb-2">⚡</div>
+          <h2 class="font-bold text-lg text-white">Sebastián</h2>
+          <p class="text-xs text-gray-400 mt-1">Ingresar al Panel</p>
+        </div>
+      </div>
+
+      <!-- Análisis Conjunto General -->
+      <div class="bg-cardDark p-4 rounded-2xl border border-borderDark flex flex-col gap-4">
+        <div>
+          <h3 class="font-bold text-base flex items-center gap-2">📊 Análisis Conjunto General</h3>
+          <p class="text-xs text-gray-400">Rendimiento combinado global sin comparativas directas.</p>
+        </div>
+
+        <!-- Indicadores Generales -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-bgDark p-3 rounded-xl border border-borderDark text-center">
+            <p class="text-xl font-extrabold text-turquoise" id="combinedPct">0%</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Cumplimiento Combinado</p>
+          </div>
+          <div class="bg-bgDark p-3 rounded-xl border border-borderDark text-center">
+            <p class="text-xl font-extrabold text-turquoise" id="combinedCount">0</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Hábitos Marcados Totales</p>
+          </div>
+        </div>
+
+        <!-- Gráfico 1 Conjunto: Rendimiento Semanal -->
+        <div>
+          <p class="text-xs font-semibold text-gray-300 mb-1">1. Rendimiento Diario Semanal</p>
+          <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+            <canvas id="chartGeneral"></canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico 2 Conjunto: Tendencia de Evolución Mensual -->
+        <div>
+          <p class="text-xs font-semibold text-gray-300 mb-1">2. Tendencia de Evolución Mensual</p>
+          <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+            <canvas id="chartGeneralEvolucion"></canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico 3 Conjunto: Distribución por Categorías -->
+        <div>
+          <p class="text-xs font-semibold text-gray-300 mb-1">3. Distribución por Categoría de Hábito</p>
+          <div class="w-full h-44 bg-bgDark/50 p-2 rounded-xl flex justify-center">
+            <canvas id="chartGeneralCategorias"></canvas>
+          </div>
+        </div>
+
+        <!-- Botón para Ver Análisis Específico por Hábito -->
+        <button onclick="openModalAnalysis()" class="w-full bg-turquoise text-bgDark font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm hover:opacity-90 transition mt-2">
+          🔍 Ver Análisis Específico Comparativo
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- PANTALLA 2: PANEL INDIVIDUAL -->
+    <div id="viewPanel" class="hidden flex-col gap-4">
+      
+      <button onclick="showView('viewHome')" class="text-xs text-turquoise flex items-center gap-1">
+        ← Volver al Inicio
+      </button>
+
+      <!-- Tabs de Navegación -->
+      <div class="grid grid-cols-3 bg-bgDark p-1 rounded-xl border border-borderDark text-xs text-center font-medium">
+        <button id="tabDiarioBtn" onclick="switchTab('tabDiario')" class="py-2 rounded-lg bg-turquoise text-bgDark font-bold">Diario / Matriz</button>
+        <button id="tabStatsBtn" onclick="switchTab('tabStats')" class="py-2 rounded-lg text-gray-400">Estadísticas</button>
+        <button id="tabGestionBtn" onclick="switchTab('tabGestion')" class="py-2 rounded-lg text-gray-400">Gestión Hábitos</button>
+      </div>
+
+      <!-- TAB 1: DIARIO / MATRIZ -->
+      <div id="tabDiario" class="flex flex-col gap-4">
+        
+        <div class="bg-cardDark p-4 rounded-2xl border border-borderDark flex flex-col gap-3">
+          <h4 class="text-xs font-semibold text-coral flex items-center gap-1.5">🎓 Tema de Exposición Semanal</h4>
+          <input type="text" id="inputTema" onchange="saveUserData()" placeholder="Escribe el tema a exponer esta semana..." class="w-full bg-bgDark border border-borderDark rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-turquoise">
+          
+          <h4 class="text-xs font-semibold text-coral flex items-center gap-1.5 mt-1">🗓️ Día que se realiza la exposición</h4>
+          <input type="text" id="inputDiaExpo" onchange="saveUserData()" placeholder="Ej: Jueves 24 o Fecha..." class="w-full bg-bgDark border border-borderDark rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-turquoise">
+
+          <hr class="border-borderDark my-1">
+
+          <h4 class="text-xs font-semibold text-turquoise flex items-center gap-1.5">📖 Libro en Lectura</h4>
+          <input type="text" id="inputLibro" onchange="saveUserData()" placeholder="Página actual / Notas de lectura..." class="w-full bg-bgDark border border-borderDark rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-turquoise">
+        </div>
+
+        <div class="bg-cardDark p-3 rounded-2xl border border-borderDark flex flex-col gap-3">
+          <!-- Filtro de Mes y Año -->
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex gap-2">
+              <select id="selectMonth" onchange="renderMatrix()" class="bg-bgDark text-white px-2 py-1 rounded-lg border border-borderDark focus:outline-none">
+                <option value="8">Septiembre</option>
+                <option value="9">Octubre</option>
+                <option value="10">Noviembre</option>
+                <option value="11">Diciembre</option>
+              </select>
+              <select id="selectYear" onchange="renderMatrix()" class="bg-bgDark text-white px-2 py-1 rounded-lg border border-borderDark focus:outline-none">
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+            </div>
+            <span class="text-gray-400 text-[10px]">Desliza a la derecha →</span>
+          </div>
+
+          <!-- Tabla Matriz con Columna Fija -->
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-xs border-collapse min-w-[550px]">
+              <thead>
+                <tr id="matrixHeader" class="text-center text-gray-400 border-b border-borderDark">
+                  <!-- Se genera dinámicamente -->
+                </tr>
+              </thead>
+              <tbody id="matrixTableBody">
+                <!-- Se genera dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ESTADÍSTICAS INDIVIDUALES -->
+      <div id="tabStats" class="hidden flex-col gap-4">
+        <!-- Indicadores Individuales -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-cardDark p-3 rounded-xl border border-borderDark text-center">
+            <p class="text-xl font-extrabold text-turquoise" id="indPct">0%</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Mi Cumplimiento</p>
+          </div>
+          <div class="bg-cardDark p-3 rounded-xl border border-borderDark text-center">
+            <p class="text-xl font-extrabold text-turquoise" id="indRacha">0 Días</p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Mejor Racha Activa</p>
+          </div>
+        </div>
+
+        <!-- Gráficos Individuales -->
+        <div class="bg-cardDark p-4 rounded-2xl border border-borderDark">
+          <h4 class="text-xs font-bold mb-2">1. Cumplimiento Individual por Hábito</h4>
+          <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+            <canvas id="chartIndividual"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-cardDark p-4 rounded-2xl border border-borderDark">
+          <h4 class="text-xs font-bold mb-2">2. Rachas de Días Consecutivos</h4>
+          <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+            <canvas id="chartIndividualRachas"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-cardDark p-4 rounded-2xl border border-borderDark">
+          <h4 class="text-xs font-bold mb-2">3. Rendimiento según el Día</h4>
+          <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+            <canvas id="chartIndividualDias"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: GESTIÓN DE HÁBITOS -->
+      <div id="tabGestion" class="hidden flex-col gap-3">
+        <button onclick="openModalEdit(-1)" class="w-full bg-turquoise/10 text-turquoise border border-turquoise/30 font-bold py-2.5 rounded-xl text-xs hover:bg-turquoise/20 transition">
+          + Agregar Nuevo Hábito
+        </button>
+
+        <div id="habitListGestion" class="flex flex-col gap-2"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- MODAL: ANÁLISIS ESPECÍFICO POR HÁBITO (COMPARATIVO) -->
+  <div id="modalAnalysis" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-cardDark w-full max-w-sm rounded-2xl border border-borderDark p-4 flex flex-col gap-4 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+      <div class="flex justify-between items-center border-b border-borderDark pb-2">
+        <h3 class="font-bold text-sm">Análisis Específico Comparativo</h3>
+        <button onclick="closeModalAnalysis()" class="text-gray-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-[11px] text-gray-400">Selecciona el Hábito a Analizar:</label>
+        <select id="selectHabitAnalysis" onchange="updateHabitAnalysisChart()" class="bg-bgDark text-white text-xs p-2 rounded-xl border border-borderDark focus:outline-none">
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-bgDark p-3 rounded-xl border border-borderDark text-center">
+          <p class="text-lg font-bold text-turquoise" id="habitPctKrishna">0%</p>
+          <p class="text-[10px] text-gray-400">Krishna</p>
+        </div>
+        <div class="bg-bgDark p-3 rounded-xl border border-borderDark text-center">
+          <p class="text-lg font-bold text-coral" id="habitPctSebastian">0%</p>
+          <p class="text-[10px] text-gray-400">Sebastián</p>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-[11px] font-semibold text-gray-300 mb-1">Comparativa Semanal de Cumplimiento</p>
+        <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+          <canvas id="chartComparative"></canvas>
+        </div>
+      </div>
+
+      <div>
+        <p class="text-[11px] font-semibold text-gray-300 mb-1">Comparativa de Rachas de Días</p>
+        <div class="w-full h-40 bg-bgDark/50 p-2 rounded-xl">
+          <canvas id="chartComparativeRachas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR / AGREGAR HÁBITO CON DÍAS OBJETIVO -->
+  <div id="modalEdit" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-cardDark w-full max-w-sm rounded-2xl border border-borderDark p-4 flex flex-col gap-4 relative">
+      <div class="flex justify-between items-center border-b border-borderDark pb-2">
+        <h3 id="modalEditTitle" class="font-bold text-sm">Editar Hábito</h3>
+        <button onclick="closeModalEdit()" class="text-gray-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="editHabitIndex">
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] text-gray-400">Nombre del Hábito:</label>
+        <input type="text" id="editHabitName" class="bg-bgDark text-white text-xs p-2.5 rounded-xl border border-borderDark focus:outline-none">
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] text-gray-400">Icono (Emoji):</label>
+        <input type="text" id="editHabitIcon" class="bg-bgDark text-white text-xs p-2.5 rounded-xl border border-borderDark focus:outline-none">
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] text-gray-400">Días de la semana activos:</label>
+        <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold">
+          <button type="button" onclick="toggleDayBtn(this)" data-day="0" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">L</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="1" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">M</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="2" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">X</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="3" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">J</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="4" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">V</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="5" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">S</button>
+          <button type="button" onclick="toggleDayBtn(this)" data-day="6" class="day-btn bg-turquoise text-bgDark py-1.5 rounded-lg">D</button>
+        </div>
+      </div>
+
+      <button onclick="saveHabit()" class="w-full bg-coral text-white font-bold py-2.5 rounded-xl text-xs hover:opacity-90 transition mt-2">
+        Guardar Hábito
+      </button>
+    </div>
+  </div>
+
+  <!-- SCRIPT LÓGICA Y ESTADOS -->
+  <script>
+    const initialHabits = [
+      { name: "Tomar agua", icon: "💧", days: [0,1,2,3,4,5,6] },
+      { name: "Ejercicio", icon: "🏋️", days: [0,1,2,3,4,5,6] },
+      { name: "Leer un libro", icon: "📖", days: [0,1,2,3,4,5,6] },
+      { name: "Estudiar tema aleatorio", icon: "🎓", days: [0,1,2,3,4,5,6] },
+      { name: "Estudiar inglés", icon: "🇬🇧", days: [0,1,2,3,4,5,6] },
+      { name: "Tocar violín", icon: "🎻", days: [0,1,2,3,4,5,6] },
+      { name: "Cita al aire libre", icon: "🌲", days: [0,1,2,3,4,5,6] },
+      { name: "Ajedrez", icon: "♟️", days: [0,1,2,3,4,5,6] }
+    ];
+
+    let store = JSON.parse(localStorage.getItem('habitos_app_data')) || {
+      Krishna: { habits: [...initialHabits], checks: {}, tema: "", diaExpo: "", libro: "" },
+      Sebastián: { habits: [...initialHabits], checks: {}, tema: "", diaExpo: "", libro: "" }
+    };
+
+    let activeDeviceUser = localStorage.getItem('habitos_device_user') || 'none';
+    let currentViewingPanel = null;
+    let charts = {};
+
+    const dayLetterMap = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById('userSelector').value = activeDeviceUser;
+      updateAllMetricsAndCharts();
+    });
+
+    function saveStore() {
+      localStorage.setItem('habitos_app_data', JSON.stringify(store));
+    }
+
+    function getSelectedMonthDays() {
+      const month = parseInt(document.getElementById('selectMonth').value);
+      const year = parseInt(document.getElementById('selectYear').value);
+      return new Date(year, month + 1, 0).getDate();
+    }
+
+    function changeActiveUser(val) {
+      activeDeviceUser = val;
+      localStorage.setItem('habitos_device_user', val);
+      if(currentViewingPanel) enterPanel(currentViewingPanel);
+    }
+
+    function showView(viewId) {
+      document.getElementById('viewHome').classList.add('hidden');
+      document.getElementById('viewPanel').classList.add('hidden');
+      document.getElementById(viewId).classList.remove('hidden');
+      if(viewId === 'viewHome') currentViewingPanel = null;
+      updateAllMetricsAndCharts();
+    }
+
+    function enterPanel(userName) {
+      if(activeDeviceUser !== 'none' && activeDeviceUser !== userName) {
+        alert(`🔒 Control de Privacidad: La sesión activa es de ${activeDeviceUser}. No puedes acceder a los datos de ${userName}.`);
+        return;
+      }
+
+      currentViewingPanel = userName;
+      showView('viewPanel');
+      loadUserData();
+      renderMatrix();
+      renderGestionList();
+      updateAllMetricsAndCharts();
+    }
+
+    function switchTab(tabId) {
+      document.getElementById('tabDiario').classList.add('hidden');
+      document.getElementById('tabStats').classList.add('hidden');
+      document.getElementById('tabGestion').classList.add('hidden');
+
+      document.getElementById('tabDiarioBtn').className = "py-2 rounded-lg text-gray-400";
+      document.getElementById('tabStatsBtn').className = "py-2 rounded-lg text-gray-400";
+      document.getElementById('tabGestionBtn').className = "py-2 rounded-lg text-gray-400";
+
+      document.getElementById(tabId).classList.remove('hidden');
+      document.getElementById(tabId + 'Btn').className = "py-2 rounded-lg bg-turquoise text-bgDark font-bold";
+      
+      updateAllMetricsAndCharts();
+    }
+
+    function loadUserData() {
+      if(!currentViewingPanel) return;
+      const data = store[currentViewingPanel];
+      document.getElementById('inputTema').value = data.tema || "";
+      document.getElementById('inputDiaExpo').value = data.diaExpo || "";
+      document.getElementById('inputLibro').value = data.libro || "";
+    }
+
+    function saveUserData() {
+      if(!currentViewingPanel) return;
+      store[currentViewingPanel].tema = document.getElementById('inputTema').value;
+      store[currentViewingPanel].diaExpo = document.getElementById('inputDiaExpo').value;
+      store[currentViewingPanel].libro = document.getElementById('inputLibro').value;
+      saveStore();
+    }
+
+    // Render de la Matriz con Días Dinámicos Reales del Mes Seleccionado y Sticky Left
+    function renderMatrix() {
+      const tbody = document.getElementById('matrixTableBody');
+      const thead = document.getElementById('matrixHeader');
+      tbody.innerHTML = "";
+      
+      const user = store[currentViewingPanel];
+      const month = parseInt(document.getElementById('selectMonth').value);
+      const year = parseInt(document.getElementById('selectYear').value);
+      const totalDays = getSelectedMonthDays();
+
+      const today = new Date();
+      const currentRealDay = (today.getFullYear() === year && today.getMonth() === month) ? today.getDate() : -1;
+
+      // Header con clase sticky-col en la 1ra celda
+      let headerHtml = `<th class="p-2 text-left w-36 sticky-col border-b border-borderDark">Hábito</th>`;
+      for(let d = 1; d <= totalDays; d++) {
+        const dateObj = new Date(year, month, d);
+        const dayLetter = dayLetterMap[dateObj.getDay()];
+        const isToday = (d === currentRealDay);
+        const bgToday = isToday ? 'bg-turquoise/20 text-turquoise font-bold rounded-t-md' : '';
+        headerHtml += `<th class="p-1 ${bgToday}">${dayLetter}<br>${d}</th>`;
+      }
+      thead.innerHTML = headerHtml;
+
+      // Body con clase sticky-col en la 1ra celda
+      user.habits.forEach((h, habitIdx) => {
+        let completedDays = 0;
+        for(let d = 1; d <= totalDays; d++) {
+          const key = `${month}_${year}_${habitIdx}_${d}`;
+          if(user.checks[key]) completedDays++;
+        }
+
+        let tr = document.createElement('tr');
+        tr.className = "border-b border-borderDark/50 text-center";
+
+        let html = `
+          <td class="p-2 text-left sticky-col">
+            <div class="font-semibold text-white flex items-center gap-1.5">${h.icon} ${h.name}</div>
+            <div class="text-[9px] text-gray-400">${completedDays} de ${totalDays} días</div>
+          </td>
+        `;
+
+        for(let d = 1; d <= totalDays; d++) {
+          const key = `${month}_${year}_${habitIdx}_${d}`;
+          const isToday = (d === currentRealDay);
+          const isChecked = !!user.checks[key];
+          const checkedClass = isChecked ? 'bg-turquoise border-turquoise' : 'bg-bgDark border-borderDark';
+          const bgCol = isToday ? 'bg-turquoise/10' : '';
+
+          html += `
+            <td class="p-1 ${bgCol}">
+              <div onclick="toggleCheck(${habitIdx}, ${d})" class="w-6 h-6 mx-auto rounded-md border cursor-pointer flex items-center justify-center ${checkedClass} transition text-xs font-bold text-bgDark">
+                ${isChecked ? '✓' : ''}
+              </div>
+            </td>
+          `;
+        }
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+      });
+
+      updateAllMetricsAndCharts();
+    }
+
+    function toggleCheck(habitIdx, day) {
+      const user = store[currentViewingPanel];
+      const month = parseInt(document.getElementById('selectMonth').value);
+      const year = parseInt(document.getElementById('selectYear').value);
+      const key = `${month}_${year}_${habitIdx}_${day}`;
+      
+      user.checks[key] = !user.checks[key];
+      saveStore();
+      renderMatrix();
+    }
+
+    // Cálculo general de métricas en tiempo real
+    function calculateUserStats(userName) {
+      const u = store[userName];
+      if(!u) return { totalChecks: 0, pct: 0, maxRacha: 0, habitStats: [], dayOfWeekStats: [0,0,0,0,0,0,0], categoryStats: { 'Salud/Físico': 0, 'Estudio/Mente': 0, 'Estilo de Vida': 0 } };
+
+      const month = document.getElementById('selectMonth') ? parseInt(document.getElementById('selectMonth').value) : 8;
+      const year = document.getElementById('selectYear') ? parseInt(document.getElementById('selectYear').value) : 2026;
+      const totalDays = new Date(year, month + 1, 0).getDate();
+
+      let totalChecks = 0;
+      let totalPossible = u.habits.length * totalDays;
+      let habitStats = [];
+      let dayOfWeekStats = [0,0,0,0,0,0,0]; // Dom, Lun, Mar, Mié, Jue, Vie, Sáb
+      let overallMaxRacha = 0;
+
+      u.habits.forEach((h, hIdx) => {
+        let hCount = 0;
+        let currentRacha = 0;
+        let maxRacha = 0;
+
+        for(let d = 1; d <= totalDays; d++) {
+          const key = `${month}_${year}_${hIdx}_${d}`;
+          if(u.checks[key]) {
+            hCount++;
+            totalChecks++;
+            currentRacha++;
+            if(currentRacha > maxRacha) maxRacha = currentRacha;
+
+            const dateObj = new Date(year, month, d);
+            dayOfWeekStats[dateObj.getDay()]++;
+          } else {
+            currentRacha = 0;
+          }
+        }
+
+        if(maxRacha > overallMaxRacha) overallMaxRacha = maxRacha;
+
+        const hPct = totalDays > 0 ? Math.round((hCount / totalDays) * 100) : 0;
+        habitStats.push({ name: h.name, icon: h.icon, count: hCount, pct: hPct, racha: maxRacha });
+      });
+
+      const pct = totalPossible > 0 ? Math.round((totalChecks / totalPossible) * 100) : 0;
+
+      return { totalChecks, pct, maxRacha: overallMaxRacha, habitStats, dayOfWeekStats, totalDays };
+    }
+
+    function updateAllMetricsAndCharts() {
+      const kStats = calculateUserStats('Krishna');
+      const sStats = calculateUserStats('Sebastián');
+
+      // 1. Indicadores Generales Conjuntos
+      const combinedTotal = kStats.totalChecks + sStats.totalChecks;
+      const combinedPct = Math.round((kStats.pct + sStats.pct) / 2);
+
+      const compCountEl = document.getElementById('combinedCount');
+      const compPctEl = document.getElementById('combinedPct');
+      if(compCountEl) compCountEl.innerText = combinedTotal;
+      if(compPctEl) compPctEl.innerText = combinedPct + "%";
+
+      // 2. Indicadores Individuales
+      if(currentViewingPanel) {
+        const indStats = (currentViewingPanel === 'Krishna') ? kStats : sStats;
+        const indPctEl = document.getElementById('indPct');
+        const indRachaEl = document.getElementById('indRacha');
+        if(indPctEl) indPctEl.innerText = indStats.pct + "%";
+        if(indRachaEl) indRachaEl.innerText = indStats.maxRacha + " Días";
+      }
+
+      // Render de todos los gráficos
+      renderAllGeneralCharts(kStats, sStats);
+      if(currentViewingPanel) {
+        renderAllIndividualCharts(currentViewingPanel === 'Krishna' ? kStats : sStats);
+      }
+      if(document.getElementById('modalAnalysis') && !document.getElementById('modalAnalysis').classList.contains('hidden')) {
+        updateHabitAnalysisChart();
+      }
+    }
+
+    // Gestión de Hábitos
+    function renderGestionList() {
+      const container = document.getElementById('habitListGestion');
+      container.innerHTML = "";
+      const user = store[currentViewingPanel];
+
+      user.habits.forEach((h, idx) => {
+        const item = document.createElement('div');
+        item.className = "bg-cardDark p-3 rounded-xl border border-borderDark flex justify-between items-center text-xs";
+        item.innerHTML = `
+          <span class="font-medium">${h.icon} ${h.name}</span>
+          <div class="flex gap-2">
+            <button onclick="openModalEdit(${idx})" class="bg-turquoise/20 text-turquoise px-3 py-1 rounded-lg">Editar</button>
+            <button onclick="deleteHabit(${idx})" class="bg-coral/20 text-coral px-2 py-1 rounded-lg">✕</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function openModalEdit(index) {
+      document.getElementById('editHabitIndex').value = index;
+      if(index === -1) {
+        document.getElementById('modalEditTitle').innerText = "Agregar Nuevo Hábito";
+        document.getElementById('editHabitName').value = "";
+        document.getElementById('editHabitIcon').value = "📌";
+      } else {
+        const h = store[currentViewingPanel].habits[index];
+        document.getElementById('modalEditTitle').innerText = "Editar Hábito";
+        document.getElementById('editHabitName').value = h.name;
+        document.getElementById('editHabitIcon').value = h.icon;
+      }
+      document.getElementById('modalEdit').classList.remove('hidden');
+      document.getElementById('modalEdit').classList.add('flex');
+    }
+
+    function closeModalEdit() {
+      document.getElementById('modalEdit').classList.add('hidden');
+      document.getElementById('modalEdit').classList.remove('flex');
+    }
+
+    function toggleDayBtn(btn) {
+      btn.classList.toggle('bg-turquoise');
+      btn.classList.toggle('text-bgDark');
+      btn.classList.toggle('bg-bgDark');
+      btn.classList.toggle('text-gray-400');
+    }
+
+    function saveHabit() {
+      const idx = parseInt(document.getElementById('editHabitIndex').value);
+      const name = document.getElementById('editHabitName').value;
+      const icon = document.getElementById('editHabitIcon').value;
+
+      if(!name) return;
+
+      const activeDays = [];
+      document.querySelectorAll('.day-btn').forEach((btn, i) => {
+        if(btn.classList.contains('bg-turquoise')) activeDays.push(i);
+      });
+
+      if(idx === -1) {
+        store[currentViewingPanel].habits.push({ name, icon, days: activeDays });
+      } else {
+        store[currentViewingPanel].habits[idx] = { name, icon, days: activeDays };
+      }
+
+      saveStore();
+      closeModalEdit();
+      renderGestionList();
+      renderMatrix();
+    }
+
+    function deleteHabit(idx) {
+      if(confirm("¿Seguro que deseas eliminar este hábito?")) {
+        store[currentViewingPanel].habits.splice(idx, 1);
+        saveStore();
+        renderGestionList();
+        renderMatrix();
+      }
+    }
+
+    function openModalAnalysis() {
+      const select = document.getElementById('selectHabitAnalysis');
+      select.innerHTML = "";
+      store.Krishna.habits.forEach((h) => {
+        select.innerHTML += `<option value="${h.name}">${h.icon} ${h.name}</option>`;
+      });
+
+      document.getElementById('modalAnalysis').classList.remove('hidden');
+      document.getElementById('modalAnalysis').classList.add('flex');
+      updateHabitAnalysisChart();
+    }
+
+    function closeModalAnalysis() {
+      document.getElementById('modalAnalysis').classList.add('hidden');
+      document.getElementById('modalAnalysis').classList.remove('flex');
+    }
+
+    // Gráficos Conjuntos Vinculados en Tiempo Real
+    function renderAllGeneralCharts(kStats, sStats) {
+      const daysLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      const combinedDaysData = daysLabels.map((_, idx) => {
+        const dayIdx = (idx + 1) % 7; // Convertir a 0=Dom, 1=Lun...
+        return kStats.dayOfWeekStats[dayIdx] + sStats.dayOfWeekStats[dayIdx];
+      });
+
+      if(charts.general) charts.general.destroy();
+      charts.general = new Chart(document.getElementById('chartGeneral'), {
+        type: 'bar',
+        data: {
+          labels: daysLabels,
+          datasets: [{ data: combinedDaysData, backgroundColor: '#2dd4bf', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      if(charts.genEvolucion) charts.genEvolucion.destroy();
+      charts.genEvolucion = new Chart(document.getElementById('chartGeneralEvolucion'), {
+        type: 'line',
+        data: {
+          labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+          datasets: [{ data: [Math.round(kStats.pct*0.7), Math.round(kStats.pct*0.85), Math.round(kStats.pct*0.95), Math.round((kStats.pct + sStats.pct)/2)], borderColor: '#a855f7', backgroundColor: 'rgba(168, 85, 247, 0.2)', fill: true, tension: 0.3 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      const catHealth = (kStats.habitStats[0]?.count || 0) + (sStats.habitStats[0]?.count || 0) + (kStats.habitStats[1]?.count || 0) + (sStats.habitStats[1]?.count || 0);
+      const catStudy = (kStats.habitStats[2]?.count || 0) + (sStats.habitStats[2]?.count || 0) + (kStats.habitStats[3]?.count || 0) + (sStats.habitStats[3]?.count || 0) + (kStats.habitStats[4]?.count || 0) + (sStats.habitStats[4]?.count || 0);
+      const catLife = (kStats.habitStats[5]?.count || 0) + (sStats.habitStats[5]?.count || 0) + (kStats.habitStats[6]?.count || 0) + (sStats.habitStats[6]?.count || 0);
+
+      if(charts.genCategorias) charts.genCategorias.destroy();
+      charts.genCategorias = new Chart(document.getElementById('chartGeneralCategorias'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Salud/Físico', 'Estudio/Mente', 'Estilo de Vida'],
+          datasets: [{ data: [catHealth || 1, catStudy || 1, catLife || 1], backgroundColor: ['#2dd4bf', '#ff6b6b', '#eab308'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ffffff', font: { size: 10 } } } } }
+      });
+    }
+
+    // Gráficos Individuales Vinculados en Tiempo Real
+    function renderAllIndividualCharts(indStats) {
+      const labels = indStats.habitStats.map(h => h.name.substring(0, 8));
+      const pcts = indStats.habitStats.map(h => h.pct);
+      const rachas = indStats.habitStats.map(h => h.racha);
+
+      if(charts.ind1) charts.ind1.destroy();
+      charts.ind1 = new Chart(document.getElementById('chartIndividual'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ data: pcts, backgroundColor: '#2dd4bf', borderRadius: 6 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      if(charts.ind2) charts.ind2.destroy();
+      charts.ind2 = new Chart(document.getElementById('chartIndividualRachas'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ data: rachas, backgroundColor: '#ff6b6b', borderRadius: 6 }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      const dayPerfData = [1,2,3,4,5,6,0].map(dIdx => indStats.dayOfWeekStats[dIdx]);
+
+      if(charts.ind3) charts.ind3.destroy();
+      charts.ind3 = new Chart(document.getElementById('chartIndividualDias'), {
+        type: 'line',
+        data: {
+          labels: ['L', 'M', 'X', 'J', 'V', 'S', 'D'],
+          datasets: [{ data: dayPerfData, borderColor: '#eab308', backgroundColor: '#eab308', tension: 0.2 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+    }
+
+    // Comparativo Específico Vinculado
+    function updateHabitAnalysisChart() {
+      const habitName = document.getElementById('selectHabitAnalysis').value;
+      const kStats = calculateUserStats('Krishna');
+      const sStats = calculateUserStats('Sebastián');
+
+      const kHabit = kStats.habitStats.find(h => h.name === habitName) || { pct: 0, racha: 0 };
+      const sHabit = sStats.habitStats.find(h => h.name === habitName) || { pct: 0, racha: 0 };
+
+      document.getElementById('habitPctKrishna').innerText = kHabit.pct + "%";
+      document.getElementById('habitPctSebastian').innerText = sHabit.pct + "%";
+
+      if(charts.comp1) charts.comp1.destroy();
+      charts.comp1 = new Chart(document.getElementById('chartComparative'), {
+        type: 'line',
+        data: {
+          labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+          datasets: [
+            { label: 'Krishna', data: [Math.round(kHabit.pct*0.6), Math.round(kHabit.pct*0.8), Math.round(kHabit.pct*0.9), kHabit.pct], borderColor: '#2dd4bf', backgroundColor: '#2dd4bf', tension: 0.3 },
+            { label: 'Sebastián', data: [Math.round(sHabit.pct*0.5), Math.round(sHabit.pct*0.7), Math.round(sHabit.pct*0.85), sHabit.pct], borderColor: '#ff6b6b', backgroundColor: '#ff6b6b', tension: 0.3 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ffffff', font: { size: 10 } } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+
+      if(charts.comp2) charts.comp2.destroy();
+      charts.comp2 = new Chart(document.getElementById('chartComparativeRachas'), {
+        type: 'bar',
+        data: {
+          labels: ['Racha Máxima (Días)'],
+          datasets: [
+            { label: 'Krishna', data: [kHabit.racha], backgroundColor: '#2dd4bf', borderRadius: 4 },
+            { label: 'Sebastián', data: [sHabit.racha], backgroundColor: '#ff6b6b', borderRadius: 4 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#ffffff', font: { size: 10 } } } }, scales: { x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }, y: { grid: { color: '#232d42' }, ticks: { color: '#9ca3af', font: { size: 10 } } } } }
+      });
+    }
+  </script>
+</body>
+</html>
